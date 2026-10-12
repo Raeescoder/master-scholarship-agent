@@ -1,0 +1,104 @@
+/* Custom styling & animations for ScholarAI */
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: #090d16;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Tabs */
+.tab-btn.active {
+  background: #4f46e5;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+}
+
+.mobile-tab-btn.active {
+  color: #818cf8;
+  border-bottom: 2px solid #818cf8;
+}
+
+/* Glassmorphism Card Hover */
+.scholarship-card {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s, box-shadow 0.2s;
+}
+.scholarship-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 14px 30px -10px rgba(79, 70, 229, 0.15);
+}
+
+/* Pulse animation for active agents */
+@keyframes agentPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.02); }
+}
+
+.agent-working {
+  animation: agentPulse 1.8s infinite ease-in-out;
+}
+
+/* Score meters */
+.score-circle {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: conic-gradient(#4f46e5 var(--percent, 80%), #1e293b 0);
+}
+.score-circle::after {
+  content: "";
+  position: absolute;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #0f172a;
+}
+.score-value {
+  position: relative;
+  z-index: 10;
+  font-size: 11px;
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+/* Print styling for Roadmaps */
+@media print {
+  header, #api-status-btn, .filter-btn, #chat-form, button {
+    display: none !important;
+  }
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .bg-slate-900, .bg-slate-950, .bg-slate-800 {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #0f172a !important;
+  }
+  .text-white, .text-slate-100, .text-slate-200, .text-slate-300 {
+    color: #0f172a !important;
+  }
+  .text-slate-400 {
+    color: #475569 !important;
+  }
+  #tab-roadmap {
+    display: block !important;
+  }
+  #tab-profile, #tab-discovery, #tab-chat {
+    display: none !important;
+  }
+}
