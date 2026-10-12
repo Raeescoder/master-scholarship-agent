@@ -32,6 +32,12 @@ function setupEventListeners() {
 
   const loginForm = document.getElementById("login-form");
   if (loginForm) loginForm.addEventListener("submit", handleLogin);
+
+  const docReviewForm = document.getElementById("doc-review-form");
+  if (docReviewForm) docReviewForm.addEventListener("submit", handleRunDocReview);
+
+  const reviewText = document.getElementById("review-content");
+  if (reviewText) reviewText.addEventListener("input", updateReviewWordCount);
 }
 
 // Preset loader
@@ -501,7 +507,7 @@ function closeApiKeyModal() {
 
 // Switch Tab
 function switchTab(tabId) {
-  const tabs = ["profile", "discovery", "roadmap", "chat"];
+  const tabs = ["profile", "discovery", "roadmap", "review", "chat"];
   tabs.forEach(t => {
     const section = document.getElementById(`tab-${t}`);
     const navBtn = document.getElementById(`nav-${t}-btn`);
@@ -1161,3 +1167,214 @@ function renderMarkdown(text) {
 
   return html;
 }
+
+// ==========================================
+// DOCUMENT REVIEW & PLAGIARISM CHECKER
+// ==========================================
+
+function updateReviewWordCount() {
+  const content = document.getElementById("review-content").value;
+  const words = content.trim() ? content.trim().split(/\s+/).length : 0;
+  const countEl = document.getElementById("doc-word-count");
+  if (countEl) countEl.textContent = `${words} words`;
+}
+
+function loadSampleSOP() {
+  const sample = `Ever since I was a child, I have always been passionate about computer science and intelligent machines. In today's rapidly changing world, technology is advancing at an unprecedented pace, and it goes without saying that knowledge is power. I am a very hardworking student who wants to make the world a better place and give back to my country.
+
+This Erasmus Mundus Joint Masters scholarship in Artificial Intelligence is a golden opportunity and a vital stepping stone for my future career. During my undergraduate studies at the National Institute of Technology, I conducted research on automated medical diagnosis using convolutional neural networks. My thesis project achieved a 94.2% diagnostic accuracy across 12,500 MRI lung scans, reducing image segmentation latency by 28%. Additionally, I founded a campus AI club with over 150 student members and organized 3 regional hackathons.
+
+Upon completing this master's degree in Europe, I plan to return to India to establish an open-source clinical diagnostic lab that provides free pulmonary screening algorithms to rural clinics. This scholarship will fulfill my lifelong dream and enable me to bridge the healthcare gap in underserved communities.`;
+
+  document.getElementById("review-content").value = sample;
+  document.getElementById("review-doc-type").value = "sop";
+  document.getElementById("review-scholarship-id").value = "erasmus_mundus";
+  updateReviewWordCount();
+  switchTab("review");
+}
+
+async function handleRunDocReview(e) {
+  e.preventDefault();
+  const content = document.getElementById("review-content").value.trim();
+  const docType = document.getElementById("review-doc-type").value;
+  const scholarshipId = document.getElementById("review-scholarship-id").value || null;
+  const resultsContainer = document.getElementById("doc-review-results");
+  const submitBtn = document.getElementById("btn-run-review");
+
+  if (!content) return;
+
+  const origBtnText = submitBtn.innerHTML;
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = `<span class="animate-spin mr-2">⚙️</span> Auditing for Plagiarism, Clichés & Narrative Voice...`;
+
+  try {
+    const res = await fetch("/api/tools/review-document", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        content,
+        doc_type: docType,
+        scholarship_id: scholarshipId
+      })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.detail || "Audit failed");
+    }
+
+    resultsContainer.classList.remove("hidden");
+
+    // Cliché snippets HTML
+    let snippetsHtml = "";
+    if (data.highlighted_snippets && data.highlighted_snippets.length > 0) {
+      snippetsHtml = data.highlighted_snippets.map(s => `
+        <div class="p-3 rounded-xl bg-slate-950/80 border ${s.severity === 'Red' ? 'border-rose-500/40 bg-rose-950/20' : 'border-amber-500/40 bg-amber-950/20'} text-xs">
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-bold ${s.severity === 'Red' ? 'text-rose-400' : 'text-amber-400'}">"${escapeHtml(s.text)}"</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${s.severity === 'Red' ? 'bg-rose-500/20 text-rose-300' : 'bg-amber-500/20 text-amber-300'}">${escapeHtml(s.category)}</span>
+          </div>
+          <p class="text-slate-300 text-[11px] leading-relaxed mt-1">${escapeHtml(s.suggestion)}</p>
+        </div>
+      `).join("");
+    } else {
+      snippetsHtml = `
+        <div class="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/30 text-emerald-300 text-xs">
+          ✓ No common clichés or overused template patterns detected. Authentic narrative voice.
+        </div>
+      `;
+    }
+
+    // Rewrites HTML
+    let rewritesHtml = "";
+    if (data.rewrite_suggestions && data.rewrite_suggestions.length > 0) {
+      rewritesHtml = data.rewrite_suggestions.map(rw => `
+        <div class="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2 text-xs">
+          <div>
+            <span class="text-rose-400 font-semibold block text-[11px] uppercase tracking-wider">Before (Generic / Weak Phrasing):</span>
+            <p class="text-slate-400 italic bg-rose-950/10 p-2 rounded border border-rose-900/30">"${escapeHtml(rw.original)}"</p>
+          </div>
+          <div>
+            <span class="text-emerald-400 font-semibold block text-[11px] uppercase tracking-wider">After (Strong Admissions Formulation):</span>
+            <p class="text-emerald-200 font-medium bg-emerald-950/20 p-2 rounded border border-emerald-900/30">"${escapeHtml(rw.revised)}"</p>
+          </div>
+          <p class="text-[11px] text-slate-400 pt-1"><strong>Why this works:</strong> ${escapeHtml(rw.rationale)}</p>
+        </div>
+      `).join("");
+    }
+
+    // Strengths & Weaknesses
+    const strengthsHtml = data.strengths.map(s => `<li class="text-emerald-300">✓ ${escapeHtml(s)}</li>`).join("");
+    const weaknessesHtml = data.weaknesses.map(w => `<li class="text-amber-300">⚠ ${escapeHtml(w)}</li>`).join("");
+
+    resultsContainer.innerHTML = `
+      <div class="space-y-6">
+        <!-- Top Metrics Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <!-- Originality Score -->
+          <div class="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl flex items-center justify-between">
+            <div>
+              <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Originality Index</span>
+              <h4 class="text-xl font-extrabold text-white mt-0.5">${data.originality_score}%</h4>
+              <span class="text-[10px] text-indigo-400 block mt-0.5">${escapeHtml(data.plagiarism_risk)}</span>
+            </div>
+            <div class="score-circle shrink-0" style="--percent: ${data.originality_score}%;">
+              <span class="score-value">${data.originality_score}%</span>
+            </div>
+          </div>
+
+          <!-- Overall Quality Score -->
+          <div class="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl flex items-center justify-between">
+            <div>
+              <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Document Quality</span>
+              <h4 class="text-xl font-extrabold text-white mt-0.5">${data.overall_score}/100</h4>
+              <span class="text-[10px] text-violet-400 block mt-0.5">${data.word_count} words</span>
+            </div>
+            <div class="score-circle shrink-0" style="--percent: ${data.overall_score}%;">
+              <span class="score-value">${data.overall_score}%</span>
+            </div>
+          </div>
+
+          <!-- Clichés Detected -->
+          <div class="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl flex items-center justify-between">
+            <div>
+              <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Template Matches</span>
+              <h4 class="text-xl font-extrabold ${data.cliche_count > 0 ? 'text-amber-400' : 'text-emerald-400'} mt-0.5">${data.cliche_count} Flags</h4>
+              <span class="text-[10px] text-slate-400 block mt-0.5">${data.cliche_count > 0 ? 'Needs de-clichéing' : 'Clean language'}</span>
+            </div>
+            <div class="w-12 h-12 rounded-full ${data.cliche_count > 0 ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'} flex items-center justify-center font-bold text-base">
+              ${data.cliche_count}
+            </div>
+          </div>
+        </div>
+
+        <!-- Committee Verdict Banner -->
+        <div class="p-4 rounded-2xl bg-indigo-950/40 border border-indigo-800/40">
+          <div class="flex items-center gap-2 mb-1">
+            <i data-lucide="award" class="w-4 h-4 text-indigo-400"></i>
+            <h4 class="text-xs font-bold text-indigo-300 uppercase tracking-wider">Admissions Committee Verdict</h4>
+          </div>
+          <p class="text-sm font-semibold text-white">${escapeHtml(data.committee_verdict)}</p>
+          <div class="mt-2 text-xs text-slate-300 leading-relaxed prose prose-invert prose-xs max-w-none">
+            ${renderMarkdown(data.plagiarism_analysis)}
+          </div>
+        </div>
+
+        <!-- Detected Clichés Section -->
+        <div>
+          <h4 class="text-xs font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+            <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400"></i>
+            Detected Template Phrasing & Clichés (${data.cliche_count})
+          </h4>
+          <div class="space-y-2.5">
+            ${snippetsHtml}
+          </div>
+        </div>
+
+        <!-- Strengths vs Weaknesses -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-900/40">
+            <h4 class="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+              Document Strengths
+            </h4>
+            <ul class="text-xs space-y-1.5">
+              ${strengthsHtml}
+            </ul>
+          </div>
+
+          <div class="p-4 rounded-2xl bg-amber-950/20 border border-amber-900/40">
+            <h4 class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <i data-lucide="x-circle" class="w-3.5 h-3.5"></i>
+              Areas for Improvement
+            </h4>
+            <ul class="text-xs space-y-1.5">
+              ${weaknessesHtml}
+            </ul>
+          </div>
+        </div>
+
+        <!-- Concrete Before & After Rewrites -->
+        <div>
+          <h4 class="text-xs font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+            <i data-lucide="sparkles" class="w-4 h-4 text-violet-400"></i>
+            Admissions Transformation: Before & After Rewrites
+          </h4>
+          <div class="space-y-3">
+            ${rewritesHtml}
+          </div>
+        </div>
+      </div>
+    `;
+
+    resultsContainer.scrollIntoView({ behavior: "smooth" });
+
+  } catch (err) {
+    alert(`Document Review Error: ${err.message}`);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = origBtnText;
+    if (window.lucide) lucide.createIcons();
+  }
+}
+

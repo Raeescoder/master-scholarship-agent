@@ -32,6 +32,10 @@
           <button id="nav-profile-btn" onclick="switchTab('profile')" class="tab-btn active px-3.5 py-1.5 rounded-lg transition-all">Profile</button>
           <button id="nav-discovery-btn" onclick="switchTab('discovery')" class="tab-btn px-3.5 py-1.5 rounded-lg transition-all">Matched Scholarships</button>
           <button id="nav-roadmap-btn" onclick="switchTab('roadmap')" class="tab-btn px-3.5 py-1.5 rounded-lg transition-all">Application Roadmap</button>
+          <button id="nav-review-btn" onclick="switchTab('review')" class="tab-btn px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5">
+            <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-rose-400"></i>
+            <span>SOP & Plagiarism</span>
+          </button>
           <button id="nav-chat-btn" onclick="switchTab('chat')" class="tab-btn px-3.5 py-1.5 rounded-lg transition-all">AI Advisor Chat</button>
         </nav>
 
@@ -70,6 +74,7 @@
       <button onclick="switchTab('profile')" class="mobile-tab-btn py-1" id="m-profile">Profile</button>
       <button onclick="switchTab('discovery')" class="mobile-tab-btn py-1" id="m-discovery">Matches</button>
       <button onclick="switchTab('roadmap')" class="mobile-tab-btn py-1" id="m-roadmap">Roadmap</button>
+      <button onclick="switchTab('review')" class="mobile-tab-btn py-1" id="m-review">SOP Audit</button>
       <button onclick="switchTab('chat')" class="mobile-tab-btn py-1" id="m-chat">Advisor</button>
     </div>
   </header>
@@ -414,6 +419,84 @@
         </div>
 
       </div>
+    </section>
+
+    <!-- ============================================== -->
+    <!-- TAB 5: SOP PLAGIARISM CHECKER & DOC AUDITOR    -->
+    <!-- ============================================== -->
+    <section id="tab-review" class="tab-content hidden space-y-6">
+      
+      <div class="bg-slate-900/90 rounded-2xl border border-slate-800 p-6 shadow-xl relative overflow-hidden">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30 uppercase tracking-wider flex items-center gap-1">
+                <i data-lucide="shield-alert" class="w-3 h-3"></i> Plagiarism & Originality Auditor
+              </span>
+              <span class="px-2 py-0.5 rounded-md text-[11px] bg-slate-800 text-slate-300">SOP • CV • LOR</span>
+            </div>
+            <h2 class="text-xl font-bold text-white mt-1">Statement of Purpose & Document Quality Reviewer</h2>
+            <p class="text-xs text-slate-400 mt-0.5">Detect common internet templates, eliminate overused scholarship clichés, evaluate originality, and receive line-by-line admissions rewrites.</p>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="loadSampleSOP()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition">
+              <i data-lucide="file-text" class="w-3.5 h-3.5 text-indigo-400"></i>
+              <span>Load Sample Draft</span>
+            </button>
+          </div>
+        </div>
+
+        <form id="doc-review-form" class="mt-5 space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Document Type</label>
+              <select id="review-doc-type" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                <option value="sop">Statement of Purpose (SOP) / Motivation Letter</option>
+                <option value="cv">Academic CV / Resume</option>
+                <option value="lor">Letter of Recommendation (LOR) Draft</option>
+                <option value="proposal">Research Proposal / Study Plan</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Target Scholarship (Optional Context)</label>
+              <select id="review-scholarship-id" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                <option value="">General / Any Master's Scholarship</option>
+                <option value="erasmus_mundus">Erasmus Mundus Joint Masters (EMJM)</option>
+                <option value="chevening">Chevening Scholarships (UK)</option>
+                <option value="daad_epos">DAAD EPOS (Germany)</option>
+                <option value="fulbright_foreign">Fulbright Foreign Student Program (USA)</option>
+                <option value="swedish_institute">Swedish Institute SISGP (Sweden)</option>
+                <option value="mext_scholarship">MEXT Japanese Government</option>
+                <option value="gks_korea">Global Korea Scholarship (GKS)</option>
+                <option value="turkiye_burslari">Türkiye Bursları (Turkey)</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="block text-xs font-semibold text-slate-300">Paste Document Text</label>
+              <span id="doc-word-count" class="text-[11px] text-slate-400">0 words</span>
+            </div>
+            <textarea id="review-content" rows="8" required placeholder="Paste your Statement of Purpose (SOP), Motivation Letter, or CV text here to check for plagiarism, internet template similarities, and overused clichés..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs sm:text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500 font-mono leading-relaxed transition"></textarea>
+          </div>
+
+          <div>
+            <button type="submit" id="btn-run-review" class="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-rose-600 via-indigo-600 to-violet-600 hover:from-rose-500 hover:to-indigo-500 text-white font-semibold text-xs sm:text-sm shadow-xl shadow-indigo-600/20 flex items-center justify-center gap-2 transition-all transform active:scale-[0.99]">
+              <i data-lucide="shield-check" class="w-4 h-4"></i>
+              <span>Audit Document for Plagiarism, Clichés & Admissions Readiness</span>
+            </button>
+          </div>
+        </form>
+
+        <!-- Audit Results Container -->
+        <div id="doc-review-results" class="mt-8 hidden space-y-6 pt-6 border-t border-slate-800">
+          <!-- Rendered dynamically -->
+        </div>
+
+      </div>
+
     </section>
 
   </main>

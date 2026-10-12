@@ -94,3 +94,28 @@ class LoginRequest(BaseModel):
 
 class BookmarkRequest(BaseModel):
     scholarship_id: str
+
+class HighlightedSnippet(BaseModel):
+    text: str
+    category: str
+    severity: str
+    suggestion: str
+
+class DocumentReviewRequest(BaseModel):
+    content: str
+    doc_type: str = "sop"
+    scholarship_id: Optional[str] = None
+
+class DocumentReviewResult(BaseModel):
+    doc_type: str
+    overall_score: int
+    originality_score: int
+    plagiarism_risk: str
+    word_count: int
+    cliche_count: int
+    strengths: List[str]
+    weaknesses: List[str]
+    highlighted_snippets: List[HighlightedSnippet] = Field(default_factory=list)
+    rewrite_suggestions: List[Dict[str, Any]] = Field(default_factory=list)
+    committee_verdict: str
+    plagiarism_analysis: str

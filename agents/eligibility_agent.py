@@ -1,3 +1,13 @@
+"""
+Eligibility & Risk Auditor Agent
+--------------------------------
+This module performs deep quantitative and qualitative audits of an applicant's
+profile against the strict selection criteria of a chosen scholarship.
+It calculates a weighted 5-dimension score (0-100%), verifies hard disqualification
+rules (such as 2-year work experience or language thresholds), and generates
+admissions committee feedback.
+"""
+
 from typing import Dict, Any, List
 from models import UserProfile, MatchEvaluation
 from data.scholarships_db import SCHOLARSHIPS_DATABASE
@@ -5,15 +15,27 @@ from agents.gemini_client import gemini_client
 
 class EligibilityAgent:
     """
-    Performs multi-criteria evaluation of an applicant against specific scholarship requirements,
-    calculates weighted scores, identifies disqualification risks, and gives tactical fixes.
+    Autonomous evaluation agent:
+    - Analyzes 5 weighted criteria: GPA (25%), Work Exp (25%), Language (20%), Field (20%), Nationality (10%).
+    - Runs a pass/fail checklist identifying critical roadblocks.
+    - Yields actionable admissions advice to overcome profile limitations.
     """
 
     def evaluate(self, profile: UserProfile, scholarship_id: str, profile_summary: Dict[str, Any]) -> MatchEvaluation:
-        # Find scholarship in DB
+        """
+        Executes deep eligibility auditing for a specific scholarship.
+
+        Args:
+            profile (UserProfile): Candidate's profile data.
+            scholarship_id (str): Identifier of the target scholarship.
+            profile_summary (Dict[str, Any]): Synthesized metrics from ProfileAgent.
+
+        Returns:
+            MatchEvaluation: Detailed score, verdict, checklist, strengths, and committee advice.
+        """
+        # Look up scholarship specifications in database
         scholarship = next((s for s in SCHOLARSHIPS_DATABASE if s["id"] == scholarship_id), None)
         if not scholarship:
-            # Fallback placeholder if custom ID
             scholarship = {
                 "id": scholarship_id,
                 "name": scholarship_id.replace("_", " ").title(),
@@ -28,6 +50,7 @@ class EligibilityAgent:
         work_years = profile.work_experience_years
         has_english = profile_summary.get("has_english_proof", False)
 
+        # Initialize 5-point pass/warning checklist
         checklist = {
             "nationality_eligible": True,
             "academic_qualification": True,
@@ -39,7 +62,9 @@ class EligibilityAgent:
         strengths: List[str] = []
         obstacles: List[str] = []
 
-        # 1. GPA Evaluation (Weight: 25)
+        # ---------------------------------------------------------
+        # Dimension 1: Academic Standing & GPA (Weight: 25 points)
+        # ---------------------------------------------------------
         gpa_score = 25
         if "top 10%" in scholarship["min_gpa_requirement"].lower() or "3.8" in scholarship["min_gpa_requirement"]:
             if normalized_gpa >= 3.7:
@@ -61,9 +86,14 @@ class EligibilityAgent:
                 gpa_score = 12
                 obstacles.append(f"GPA ({normalized_gpa}/4.0) is near lower cutoff; emphasize work projects or publications.")
 
-        # 2. Work Experience Evaluation (Weight: 25)
+        # ---------------------------------------------------------
+        # Dimension 2: Work Experience Thresholds (Weight: 25 points)
+        # ---------------------------------------------------------
         work_score = 25
-        needs_strict_exp = any(phrase in scholarship["work_exp_requirement"].lower() for phrase in ["strict", "2 years", "3,000 hours", "minimum of 2 years"])
+        needs_strict_exp = any(
+            phrase in scholarship["work_exp_requirement"].lower() 
+            for phrase in ["strict", "2 years", "3,000 hours", "minimum of 2 years"]
+        )
         if needs_strict_exp:
             if work_years >= 2.0:
                 strengths.append(f"You have {work_years} years of work experience, successfully satisfying the 2-year mandatory rule.")
@@ -78,7 +108,9 @@ class EligibilityAgent:
                 work_score = 20
                 strengths.append("This program welcomes fresh graduates without penalizing lack of professional work years.")
 
-        # 3. Language Evaluation (Weight: 20)
+        # ---------------------------------------------------------
+        # Dimension 3: Language Proof & Readiness (Weight: 20 points)
+        # ---------------------------------------------------------
         lang_score = 20
         if not has_english:
             lang_score = 12
@@ -87,7 +119,9 @@ class EligibilityAgent:
         else:
             strengths.append(f"Language requirement validated: {profile.english_test}.")
 
-        # 4. Field & Destination Fit (Weight: 20)
+        # ---------------------------------------------------------
+        # Dimension 4: Curriculum & Field Fit (Weight: 20 points)
+        # ---------------------------------------------------------
         field_score = 20
         target_fields = [f.lower() for f in scholarship.get("target_fields", [])]
         user_field = profile.target_degree_field.lower()
@@ -97,14 +131,19 @@ class EligibilityAgent:
             field_score = 14
             obstacles.append(f"Verify that your specific degree curriculum qualifies under '{', '.join(scholarship.get('target_fields', [])[:3])}'.")
 
-        # 5. Nationality & Quota (Weight: 10)
+        # ---------------------------------------------------------
+        # Dimension 5: Nationality & Country Eligibility (Weight: 10 points)
+        # ---------------------------------------------------------
         nat_score = 10
         strengths.append(f"Applicants holding {profile.nationality} citizenship are eligible under program guidelines.")
 
+        # Aggregate total match score
         total_score = gpa_score + work_score + lang_score + field_score + nat_score
         total_score = max(15, min(99, total_score))
 
-        # Verdict
+        # ---------------------------------------------------------
+        # Final Verdict Classification
+        # ---------------------------------------------------------
         if total_score >= 85 and all(checklist.values()):
             verdict = "Highly Recommended Match"
         elif total_score >= 70 and checklist["work_experience_met"]:
@@ -116,17 +155,19 @@ class EligibilityAgent:
         else:
             verdict = "Low Alignment / Not Advised"
 
-        # Key tactical advice
+        # ---------------------------------------------------------
+        # Tactical Admissions Guidance
+        # ---------------------------------------------------------
         if not checklist["work_experience_met"]:
-            key_advice = f"Do not apply this year unless your internships/volunteering can be officially certified as 2,800+ hours. Redirect effort to Erasmus Mundus or MEXT instead."
+            key_advice = "Do not apply this year unless your internships/volunteering can be officially certified as 2,800+ hours. Redirect effort to Erasmus Mundus or MEXT instead."
         elif not checklist["language_readiness"]:
-            key_advice = f"Your profile is viable! Immediately book an IELTS or TOEFL exam to obtain official score report before the application deadline."
+            key_advice = "Your profile is viable! Immediately book an IELTS or TOEFL exam to obtain official score report before the application deadline."
         elif normalized_gpa >= 3.6:
-            key_advice = f"You are a strong candidate. Focus 80% of your effort on crafting a stellar, tailored Statement of Purpose highlighting societal impact and research capability."
+            key_advice = "You are a strong candidate. Focus 80% of your effort on crafting a stellar, tailored Statement of Purpose highlighting societal impact and research capability."
         else:
-            key_advice = f"Frame your undergraduate story around practical skills, senior design thesis, and clear post-graduation contribution goals to outshine higher-GPA applicants."
+            key_advice = "Frame your undergraduate story around practical skills, senior design thesis, and clear post-graduation contribution goals to outshine higher-GPA applicants."
 
-        # If Gemini is active, enrich with customized AI evaluation
+        # If Gemini is active, enrich with tailored committee critique
         if gemini_client.has_valid_key():
             prompt = f"""
 Act as a scholarship selection committee chair evaluating this candidate:
@@ -158,4 +199,5 @@ Give 2 sentences of brutally honest advice on how this applicant can maximize th
             key_advice=key_advice
         )
 
+# Global singleton instance of EligibilityAgent
 eligibility_agent = EligibilityAgent()

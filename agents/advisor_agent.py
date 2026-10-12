@@ -1,3 +1,12 @@
+"""
+Admissions Advisor Chat Agent
+-----------------------------
+This module provides conversational advising for master's scholarship applicants.
+It maintains context across the student's profile, GPA conversion, and chosen
+scholarship, offering advice on essay drafts, supervisor outreach, GPA explanations,
+and interview questions.
+"""
+
 from typing import List, Optional
 from models import UserProfile, ChatMessage
 from agents.gemini_client import gemini_client
@@ -5,12 +14,27 @@ from data.scholarships_db import SCHOLARSHIPS_DATABASE
 
 class AdvisorAgent:
     """
-    Interactive scholarship advisor providing contextual guidance, SOP critiques,
-    eligibility queries, and interview coaching.
+    Autonomous conversational agent:
+    - Injects candidate profile and target scholarship metadata into the prompt.
+    - Utilizes Gemini conversational intelligence or expert admissions heuristics.
+    - Guides students on motivation essays, overcoming academic obstacles, and referee briefings.
     """
 
     def reply(self, messages: List[ChatMessage], profile: Optional[UserProfile] = None, scholarship_id: Optional[str] = None) -> str:
-        # Build context
+        """
+        Generates contextual responses to student inquiries.
+
+        Args:
+            messages (List[ChatMessage]): Conversation history between user and agent.
+            profile (Optional[UserProfile]): Active student profile.
+            scholarship_id (Optional[str]): Current scholarship being evaluated.
+
+        Returns:
+            str: Tailored advising response formatted in Markdown.
+        """
+        # ---------------------------------------------------------
+        # 1. Context Assembly (Profile + Selected Scholarship)
+        # ---------------------------------------------------------
         context_parts = []
         if profile:
             context_parts.append(
@@ -37,7 +61,9 @@ class AdvisorAgent:
             "Highlight practical strategies: how to offset lower GPAs, how to frame leadership, how to choose referees, and how to structure motivation letters."
         )
 
-        # If Gemini is active
+        # ---------------------------------------------------------
+        # 2. Live Generation with Gemini API
+        # ---------------------------------------------------------
         if gemini_client.has_valid_key():
             prompt = "\n\n".join(context_parts) + "\n\nConversation:\n"
             for m in messages:
@@ -48,9 +74,12 @@ class AdvisorAgent:
             if reply_text:
                 return reply_text.strip()
 
-        # Fallback intelligent response generator
+        # ---------------------------------------------------------
+        # 3. Intelligent Heuristic Rule Engine (When offline/no key)
+        # ---------------------------------------------------------
         last_msg = messages[-1].content.lower() if messages else ""
-        
+
+        # SOP & Motivation Letter Queries
         if "sop" in last_msg or "motivation" in last_msg or "statement of purpose" in last_msg:
             return (
                 "**Essential Rules for a Winning Master's Scholarship SOP:**\n\n"
@@ -62,6 +91,7 @@ class AdvisorAgent:
                 "3. **Show, Don't Tell**: Don't say 'I am a passionate leader'. State: 'As lead engineer for X project, I organized a 5-member team to deliver Y under Z constraint.'\n\n"
                 "*(Tip: Set your Gemini API key in the top bar to have me review your custom SOP paragraphs in real time!)*"
             )
+        # Lower GPA Compensation Queries
         elif "gpa" in last_msg or "low grade" in last_msg or "cgpa" in last_msg:
             return (
                 "**How to Overcome a Lower GPA for Master's Scholarships:**\n\n"
@@ -70,6 +100,7 @@ class AdvisorAgent:
                 "- **Showcase Real Proof of Competence**: Relevant work experience, Github repositories, research publications, or certifications directly neutralize grade doubts.\n"
                 "- **Recommenders' Backing**: Request a professor to specifically state: *'Their exam score understates their exceptional analytical capability in laboratory problem solving.'*"
             )
+        # Letters of Recommendation Queries
         elif "recommendation" in last_msg or "reference" in last_msg or "referee" in last_msg:
             return (
                 "**Recommendation Letter (LOR) Strategy:**\n\n"
@@ -77,6 +108,7 @@ class AdvisorAgent:
                 "- **Prepare a 'Brag Packet'**: Send your referees your CV, your SOP draft, and bullet points reminding them of the specific presentations, projects, and grades you achieved in their class.\n"
                 "- **Key Qualities to Validate**: Ask one referee to highlight your academic rigor and intellectual curiosity, and another to highlight your teamwork, reliability, and leadership."
             )
+        # General Guidance Welcome
         else:
             name = profile.full_name if profile else "applicant"
             field = profile.target_degree_field if profile else "your target degree"
@@ -90,4 +122,5 @@ class AdvisorAgent:
                 "What specific question or scholarship would you like to explore?"
             )
 
+# Global singleton instance of AdvisorAgent
 advisor_agent = AdvisorAgent()

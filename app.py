@@ -15,7 +15,9 @@ from models import (
     DiscoveryResponse,
     RegisterRequest,
     LoginRequest,
-    BookmarkRequest
+    BookmarkRequest,
+    DocumentReviewRequest,
+    DocumentReviewResult
 )
 from data.scholarships_db import SCHOLARSHIPS_DATABASE
 from agents.profile_agent import profile_agent
@@ -23,6 +25,7 @@ from agents.discovery_agent import discovery_agent
 from agents.eligibility_agent import eligibility_agent
 from agents.roadmap_agent import roadmap_agent
 from agents.advisor_agent import advisor_agent
+from agents.document_review_agent import document_review_agent
 from agents.gemini_client import gemini_client
 
 app = FastAPI(
@@ -195,3 +198,23 @@ async def roadmap_endpoint(req: RoadmapRequest):
 async def chat_endpoint(req: ChatRequest):
     reply = advisor_agent.reply(req.messages, profile=req.profile, scholarship_id=req.selected_scholarship_id)
     return {"reply": reply}
+
+# Document Review & Plagiarism Auditor Endpoints
+@app.post("/api/tools/review-document")
+async def review_document_endpoint(req: DocumentReviewRequest):
+    """
+    Audits a Statement of Purpose (SOP), CV, LOR, or research proposal
+    for plagiarism, template similarity, clichés, and quality score.
+    """
+    result = document_review_agent.review_document(req)
+    return result
+
+@app.post("/api/tools/plagiarism-check")
+async def plagiarism_check_endpoint(req: DocumentReviewRequest):
+    """
+    Dedicated endpoint for checking plagiarism, clichés, and originality in an SOP.
+    """
+    req.doc_type = "sop"
+    result = document_review_agent.review_document(req)
+    return result
+

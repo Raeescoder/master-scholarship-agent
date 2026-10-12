@@ -1,3 +1,13 @@
+"""
+Roadmap & Application Strategy Agent
+------------------------------------
+This module designs an actionable master's scholarship application strategy:
+1. Four-phase milestone timeline leading up to the official submission deadlines.
+2. Statement of Purpose (SOP) narrative blueprint (The Hook, Academic Bridge, Program Fit, ROI/Impact).
+3. Comprehensive document preparation matrix with critical alerts.
+4. Referee selection tactics (Recommendation letters) and interview defense tips.
+"""
+
 from typing import Dict, Any, List
 from models import UserProfile, ApplicationRoadmap
 from data.scholarships_db import SCHOLARSHIPS_DATABASE
@@ -5,16 +15,31 @@ from agents.gemini_client import gemini_client
 
 class RoadmapAgent:
     """
-    Constructs an end-to-end strategic application roadmap, SOP outline,
-    referee coordination plan, and milestone timeline.
+    Autonomous strategic planning agent:
+    - Synthesizes student aspirations into a chronological 4-phase preparation plan.
+    - Blueprints high-impact motivation letter structures.
+    - Prepares candidate for letters of recommendation and selection interviews.
     """
 
     def generate_roadmap(self, profile: UserProfile, scholarship_id: str) -> ApplicationRoadmap:
+        """
+        Generates a comprehensive application roadmap for a chosen scholarship.
+
+        Args:
+            profile (UserProfile): Candidate's academic profile and preferences.
+            scholarship_id (str): Unique scholarship key.
+
+        Returns:
+            ApplicationRoadmap: Structured timeline, SOP guidelines, document matrix, and interview advice.
+        """
+        # Retrieve scholarship metadata
         scholarship = next((s for s in SCHOLARSHIPS_DATABASE if s["id"] == scholarship_id), None)
         s_name = scholarship["name"] if scholarship else scholarship_id.replace("_", " ").title()
         typical_deadline = scholarship.get("typical_deadline", "December - February") if scholarship else "Rolling / Annual"
 
-        # Standard structured milestones
+        # ---------------------------------------------------------
+        # 1. Four-Phase Milestone Timeline
+        # ---------------------------------------------------------
         timeline_steps = [
             {
                 "phase": "Phase 1: Foundation & Eligibility Lock-in",
@@ -54,7 +79,9 @@ class RoadmapAgent:
             }
         ]
 
-        # Tailored SOP Framework
+        # ---------------------------------------------------------
+        # 2. Statement of Purpose (SOP) Narrative Blueprint
+        # ---------------------------------------------------------
         sop_framework = {
             "hook_section": f"Open with a compelling problem-oriented moment: Explain the exact real-world challenge in {profile.target_degree_field} that inspired your journey in {profile.nationality}.",
             "academic_bridge": f"Bridge your undergraduate background ({profile.bachelor_field}, GPA {profile.gpa}) with the target Master's: highlight capstone projects, lab work, or relevant technical coursework.",
@@ -62,7 +89,9 @@ class RoadmapAgent:
             "impact_and_future_vision": "Address the scholarship sponsor's mission: outline your 5-year post-graduation plan and how you will drive technological, economic, or policy advancements."
         }
 
-        # Document checklist
+        # ---------------------------------------------------------
+        # 3. Document Preparation Matrix
+        # ---------------------------------------------------------
         required_documents = [
             {
                 "document": "Official Transcripts & Degree Certificate",
@@ -91,6 +120,9 @@ class RoadmapAgent:
             }
         ]
 
+        # ---------------------------------------------------------
+        # 4. Referee Selection & Interview Protocol
+        # ---------------------------------------------------------
         recommendation_tips = [
             "Select professors who know your work deeply rather than high-title administrators who only know your name.",
             "Send them your SOP draft, CV, and bullet points of projects you did in their class 3-4 weeks in advance.",
@@ -103,7 +135,7 @@ class RoadmapAgent:
             "Be prepared to answer: 'Why should the committee invest public funds in you over hundreds of other applicants?'"
         ]
 
-        # If Gemini is active, tailor SOP and advice
+        # If Gemini is active, generate custom narrative hook
         if gemini_client.has_valid_key():
             prompt = f"""
 Act as a world-class scholarship admissions strategist.
@@ -132,4 +164,5 @@ Provide:
             interview_prep=interview_prep
         )
 
+# Global singleton instance of RoadmapAgent
 roadmap_agent = RoadmapAgent()
