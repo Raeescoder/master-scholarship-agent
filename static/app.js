@@ -429,6 +429,16 @@ async function handleToggleBookmark(scholarshipId, event) {
 function updateSavedCount() {
   const el = document.getElementById("saved-count");
   if (el) el.textContent = userBookmarks.size;
+  const headerEl = document.getElementById("header-saved-badge");
+  if (headerEl) headerEl.textContent = userBookmarks.size;
+}
+
+function handleHeaderHeart(btn) {
+  if (!btn) return;
+  const isLiked = btn.classList.toggle("text-rose-400");
+  btn.classList.toggle("border-rose-500/50", isLiked);
+  btn.classList.toggle("bg-rose-500/10", isLiked);
+  btn.classList.toggle("scale-110", isLiked);
 }
 
 // ==========================================
